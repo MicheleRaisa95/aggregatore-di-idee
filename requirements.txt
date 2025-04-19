@@ -1,0 +1,34 @@
+# Dipendenze generali
+python-dotenv==1.0.0
+requests==2.31.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+pandas==2.1.0
+tqdm==4.66.1
+loguru==0.7.2
+
+# Scraping
+praw==7.7.1  # API Reddit
+pyppeteer==1.0.2  # Per scraping con JavaScript
+fake-useragent==1.3.0  # Rotazione user agent
+retrying==1.3.4  # Retry mechanism
+
+# Analisi e LLM
+fuzzywuzzy==0.18.0  # Fuzzy matching per deduplicazione
+python-Levenshtein==0.22.0  # Accelera FuzzyWuzzy
+ollama==0.1.2  # Client per Ollama
+
+# Storage
+supabase==1.0.4  # Client Supabase
+sqlite3-plus==0.0.2  # Estensione SQLite
+
+# Frontend
+flask==2.3.3  # Per servire l'app localmente durante lo sviluppo
+
+# Notifiche
+python-telegram-bot==20.5  # Bot Telegram
+
+# Utilità
+pyyaml==6.0.1  # Parsing file YAML
+jsonschema==4.19.0  # Validazione JSON
+backoff==2.2.1  # Exponential backoff

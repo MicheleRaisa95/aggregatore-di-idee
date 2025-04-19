@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aggregatore di Idee Business</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="bg-primary text-white py-4">
+      <div class="container">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <h1 class="mb-0">Aggregatore di Idee Business</h1>
+            <p class="lead mb-0">Scopri le idee di business più promettenti raccolte da diverse fonti online</p>
+          </div>
+          <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <button v-if="!isAuthenticated" @click="showLoginModal" class="btn btn-outline-light me-2">
+              <i class="bi bi-person"></i> Accedi
+            </button>
+            <button v-else @click="logout" class="btn btn-outline-light me-2">
+              <i class="bi bi-box-arrow-right"></i> Esci
+            </button>
+            <button class="btn btn-light">
+              <i class="bi bi-star"></i> Preferiti
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container py-4">
+      <!-- Filters -->
+      <div class="row mb-4">
+        <div class="col-md-8">
+          <div class="input-group">
+            <input type="text" class="form-control" placeholder="Cerca idee..." v-model="searchQuery">
+            <button class="btn btn-primary" type="button">
+              <i class="bi bi-search"></i>
+            </button>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="d-flex">
+            <select class="form-select me-2" v-model="currentFilter">
+              <option value="all">Tutte le idee</option>
+              <option value="high_potential">Alto potenziale</option>
+              <option value="low_difficulty">Bassa difficoltà</option>
+              <option value="large_market">Mercato ampio</option>
+            </select>
+            <select class="form-select" v-model="currentSort">
+              <option value="score">Punteggio</option>
+              <option value="date">Data</option>
+              <option value="source">Fonte</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ideas Grid -->
+      <div class="row" v-if="!loading && filteredIdeas.length > 0">
+        <div class="col-md-4 mb-4" v-for="idea in filteredIdeas" :key="idea.id">
+          <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span class="badge" :class="getScoreBadgeClass(idea.analysis.score)">
+                {{ idea.analysis.score }}/100
+              </span>
+              <div>
+                <button class="btn btn-sm btn-outline-secondary me-1" @click="toggleFavorite(idea)">
+                  <i class="bi" :class="idea.isFavorite ? 'bi-star-fill' : 'bi-star'"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-primary" @click="shareIdea(idea)">
+                  <i class="bi bi-share"></i>
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <h5 class="card-title">{{ idea.title }}</h5>
+              <p class="card-text">{{ idea.analysis.summary }}</p>
+              <div class="d-flex mb-2">
+                <span class="badge bg-secondary me-1" v-for="tag in idea.analysis.tags" :key="tag">
+                  {{ tag }}
+                </span>
+              </div>
+              <div class="d-flex justify-content-between">
+                <small class="text-muted">
+                  <i class="bi bi-speedometer2"></i> {{ idea.analysis.difficulty }}
+                </small>
+                <small class="text-muted">
+                  <i class="bi bi-graph-up"></i> {{ idea.analysis.market_potential }}
+                </small>
+              </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center">
+              <small class="text-muted">{{ formatSource(idea.source) }}</small>
+              <button class="btn btn-sm btn-primary" @click="showIdeaDetails(idea)">
+                Dettagli
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div class="text-center py-5" v-if="loading">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Caricamento...</span>
+        </div>
+        <p class="mt-3">Caricamento idee in corso...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div class="text-center py-5" v-if="!loading && filteredIdeas.length === 0">
+        <i class="bi bi-search display-1 text-muted"></i>
+        <h3 class="mt-3">Nessuna idea trovata</h3>
+        <p class="text-muted">Prova a modificare i filtri o la ricerca</p>
+      </div>
+
+      <!-- Pagination -->
+      <nav aria-label="Pagination" class="mt-4" v-if="totalPages > 1">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" :class="{ disabled: currentPage === 1 }">
+            <a class="page-link" href="#" @click.prevent="changePage(currentPage - 1)">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+          <li class="page-item" v-for="page in paginationRange" :key="page" 
+              :class="{ active: page === currentPage }">
+            <a class="page-link" href="#" @click.prevent="changePage(page)">{{ page }}</a>
+          </li>
+          <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+            <a class="page-link" href="#" @click.prevent="changePage(currentPage + 1)">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </main>
+
+    <!-- Idea Details Modal -->
+    <div class="modal fade" id="ideaDetailsModal" tabindex="-1" aria-labelledby="ideaDetailsModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content" v-if="selectedIdea">
+          <div class="modal-header">
+            <h5 class="modal-title" id="ideaDetailsModalLabel">{{ selectedIdea.title }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row mb-4">
+              <div class="col-md-8">
+                <h6>Descrizione</h6>
+                <p>{{ selectedIdea.description }}</p>
+              </div>
+              <div class="col-md-4">
+                <div class="card">
+                  <div class="card-body">
+                    <h6 class="card-title">Valutazione</h6>
+                    <div class="progress mb-3">
+                      <div class="progress-bar" role="progressbar" 
+                           :style="{width: selectedIdea.analysis.score + '%'}" 
+                           :class="getScoreProgressClass(selectedIdea.analysis.score)">
+                        {{ selectedIdea.analysis.score }}/100
+                      </div>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                      <span>Difficoltà:</span>
+                      <span>{{ selectedIdea.analysis.difficulty }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                      <span>Potenziale di mercato:</span>
+                      <span>{{ selectedIdea.analysis.market_potential }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="mb-4">
+              <h6>Insight</h6>
+              <p>{{ selectedIdea.analysis.insight }}</p>
+            </div>
+            
+            <div class="mb-4">
+              <h6>Tags</h6>
+              <div>
+                <span class="badge bg-secondary me-1" v-for="tag in selectedIdea.analysis.tags" :key="tag">
+                  {{ tag }}
+                </span>
+              </div>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <small class="text-muted">Fonte: {{ formatSource(selectedIdea.source) }}</small>
+                <br>
+                <small class="text-muted">Data: {{ formatDate(selectedIdea.timestamp) }}</small>
+              </div>
+              <a :href="selectedIdea.url" target="_blank" class="btn btn-outline-primary">
+                <i class="bi bi-link-45deg"></i> Visita la fonte
+              </a>
+            </div>
+            
+            <hr>
+            
+            <div v-if="isAuthenticated">
+              <h6>Feedback</h6>
+              <div class="mb-3">
+                <label class="form-label">La tua valutazione</label>
+                <div class="rating">
+                  <i class="bi bi-star" v-for="n in 5" :key="n" @click="rateIdea(n)"></i>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="commentInput" class="form-label">Commento</label>
+                <textarea class="form-control" id="commentInput" rows="3" v-model="userComment"></textarea>
+              </div>
+              <button class="btn btn-primary" @click="submitFeedback">
+                Invia feedback
+              </button>
+            </div>
+            <div v-else class="alert alert-info">
+              <i class="bi bi-info-circle"></i> Accedi per lasciare un feedback
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="loginModalLabel">Accedi</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="emailInput" class="form-label">Email</label>
+              <input type="email" class="form-control" id="emailInput" v-model="loginEmail">
+            </div>
+            <div class="mb-3">
+              <label for="passwordInput" class="form-label">Password</label>
+              <input type="password" class="form-control" id="passwordInput" v-model="loginPassword">
+            </div>
+            <div class="d-flex justify-content-between">
+              <button class="btn btn-primary" @click="login">Accedi</button>
+              <button class="btn btn-outline-secondary" @click="showRegisterForm">Registrati</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
